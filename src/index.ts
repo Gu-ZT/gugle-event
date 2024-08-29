@@ -1,12 +1,23 @@
 class EventListener {
+  private readonly namespace: string;
   private readonly callback: (...args: any) => void;
   private readonly priority: number;
   private readonly cancelable: boolean;
 
-  constructor(callback: (...args: any) => void, priority: number = 100, cancelable: boolean = false) {
+  constructor(
+    namespace: string,
+    callback: (...args: any) => void,
+    priority: number = 100,
+    cancelable: boolean = false
+  ) {
+    this.namespace = namespace;
     this.callback = callback;
     this.priority = priority;
     this.cancelable = cancelable;
+  }
+
+  public getNamespace(): string {
+    return this.namespace;
   }
 
   public getPriority(): number {
@@ -43,6 +54,7 @@ export class EventManager {
   public listen(
     event: string,
     callback: (...args: any) => void,
+    namespace: string = 'gugle-event',
     priority: number = 100,
     cancelable: boolean = false
   ): void {
@@ -51,16 +63,21 @@ export class EventManager {
     }
     const listeners: any[] | undefined = this.eventListeners.get(event);
     if (listeners) {
-      listeners.push(new EventListener(callback, priority, cancelable));
+      listeners.push(new EventListener(namespace, callback, priority, cancelable));
       listeners.sort(EventListener.compare);
     }
-    if (this.parent) this.parent.listen(event, callback, priority, cancelable);
+    if (this.parent) this.parent.listen(event, callback, namespace, priority, cancelable);
   }
 
-  public subscribe(event: string, priority: number = 100, cancelable: boolean = false) {
+  public subscribe(
+    event: string,
+    namespace: string = 'gugle-event',
+    priority: number = 100,
+    cancelable: boolean = false
+  ) {
     const self = this;
     return function (callback: (...args: any) => void) {
-      self.listen(event, callback, priority, cancelable);
+      self.listen(event, callback, namespace, priority, cancelable);
     };
   }
 
@@ -72,6 +89,15 @@ export class EventManager {
       }
     return args;
   }
-}
 
-console.log('Hello World!');
+  public remove(namespace: string) {
+    for (let key in this.eventListeners) {
+      const listeners: EventListener[] = [];
+      for (let listener of this.eventListeners.get(key)!) {
+        if (listener.getNamespace() !== namespace) listeners.push(listener);
+      }
+      if (listeners.length > 0) this.eventListeners.set(key, listeners);
+      else this.eventListeners.delete(key);
+    }
+  }
+}

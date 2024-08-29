@@ -38,13 +38,17 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.EventManager = void 0;
 var EventListener = /** @class */ (function () {
-    function EventListener(callback, priority, cancelable) {
+    function EventListener(namespace, callback, priority, cancelable) {
         if (priority === void 0) { priority = 100; }
         if (cancelable === void 0) { cancelable = false; }
+        this.namespace = namespace;
         this.callback = callback;
         this.priority = priority;
         this.cancelable = cancelable;
     }
+    EventListener.prototype.getNamespace = function () {
+        return this.namespace;
+    };
     EventListener.prototype.getPriority = function () {
         return this.priority;
     };
@@ -77,7 +81,8 @@ var EventManager = /** @class */ (function () {
         this.eventListeners = new Map();
         this.parent = parent;
     }
-    EventManager.prototype.listen = function (event, callback, priority, cancelable) {
+    EventManager.prototype.listen = function (event, callback, namespace, priority, cancelable) {
+        if (namespace === void 0) { namespace = 'gugle-event'; }
         if (priority === void 0) { priority = 100; }
         if (cancelable === void 0) { cancelable = false; }
         if (!this.eventListeners.has(event)) {
@@ -85,18 +90,19 @@ var EventManager = /** @class */ (function () {
         }
         var listeners = this.eventListeners.get(event);
         if (listeners) {
-            listeners.push(new EventListener(callback, priority, cancelable));
+            listeners.push(new EventListener(namespace, callback, priority, cancelable));
             listeners.sort(EventListener.compare);
         }
         if (this.parent)
-            this.parent.listen(event, callback, priority, cancelable);
+            this.parent.listen(event, callback, namespace, priority, cancelable);
     };
-    EventManager.prototype.subscribe = function (event, priority, cancelable) {
+    EventManager.prototype.subscribe = function (event, namespace, priority, cancelable) {
+        if (namespace === void 0) { namespace = 'gugle-event'; }
         if (priority === void 0) { priority = 100; }
         if (cancelable === void 0) { cancelable = false; }
         var self = this;
         return function (callback) {
-            self.listen(event, callback, priority, cancelable);
+            self.listen(event, callback, namespace, priority, cancelable);
         };
     };
     EventManager.prototype.post = function (event) {
@@ -117,7 +123,20 @@ var EventManager = /** @class */ (function () {
             });
         });
     };
+    EventManager.prototype.remove = function (namespace) {
+        for (var key in this.eventListeners) {
+            var listeners = [];
+            for (var _i = 0, _a = this.eventListeners.get(key); _i < _a.length; _i++) {
+                var listener = _a[_i];
+                if (listener.getNamespace() !== namespace)
+                    listeners.push(listener);
+            }
+            if (listeners.length > 0)
+                this.eventListeners.set(key, listeners);
+            else
+                this.eventListeners.delete(key);
+        }
+    };
     return EventManager;
 }());
 exports.EventManager = EventManager;
-console.log('Hello World!');
